@@ -240,20 +240,24 @@ def play_audio_file(filename):
             ]
             
             devnull = open(os.devnull, 'w')
+            played = False
             for cmd in players:
                 try:
                     ret = subprocess.call(cmd, stdout=devnull, stderr=devnull)
-                    devnull.close()
                     if ret == 0 or ret == -15:  # 0 = success, -15 = SIGTERM (timeout ok)
-                        return True
+                        played = True
+                        break
                     # If command exists but failed, try next
                 except OSError:
                     # Command not found, try next
                     continue
+            
             devnull.close()
             
-            print("No audio player found. Install mpg123, ffplay, mplayer, or sox.")
-            return False
+            if not played:
+                print("No audio player found. Install mpg123, ffplay, mplayer, or sox.")
+                return False
+            return True
         elif system == "Windows":
             # Use PowerShell
             cmd = ["powershell", "-c", 
