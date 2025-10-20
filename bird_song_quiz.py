@@ -228,40 +228,42 @@ def play_audio_file(filename):
     
     try:
         if system == "Darwin":  # macOS
-            subprocess.call(["afplay", filename])
+            ret = subprocess.call(["afplay", filename])
+            return ret == 0
         elif system == "Linux":
             # Try different players
             players = [
                 ["mpg123", "-q", filename],
                 ["ffplay", "-nodisp", "-autoexit", "-t", "10", filename],
-                ["mplayer", filename],
-                ["play", filename]
+                ["mplayer", "-really-quiet", filename],
+                ["play", "-q", filename]
             ]
             
-            played = False
             devnull = open(os.devnull, 'w')
             for cmd in players:
                 try:
-                    subprocess.call(cmd, stdout=devnull, stderr=devnull)
-                    played = True
-                    break
-                except (OSError, subprocess.CalledProcessError):
+                    ret = subprocess.call(cmd, stdout=devnull, stderr=devnull)
+                    devnull.close()
+                    if ret == 0 or ret == -15:  # 0 = success, -15 = SIGTERM (timeout ok)
+                        return True
+                    # If command exists but failed, try next
+                except OSError:
+                    # Command not found, try next
                     continue
             devnull.close()
             
-            if not played:
-                print("No audio player found. Install mpg123, ffplay, mplayer, or sox.")
-                return False
+            print("No audio player found. Install mpg123, ffplay, mplayer, or sox.")
+            return False
         elif system == "Windows":
             # Use PowerShell
             cmd = ["powershell", "-c", 
                    "(New-Object Media.SoundPlayer '" + filename + "').PlaySync()"]
-            subprocess.call(cmd)
+            ret = subprocess.call(cmd)
+            return ret == 0
         else:
             print("Unsupported OS: " + system)
             return False
         
-        return True
     except Exception as e:
         print("Error playing audio: " + str(e))
         return False
